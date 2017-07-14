@@ -241,6 +241,7 @@ predictandCM(rpartFit2,test.data,"raw")
 
 ```{r tunegridxgb, echo=TRUE}
 
+reset.seed()
  train.control <- trainControl(method = "repeatedcv",
                                number = 10,
                                repeats = 1,
@@ -260,7 +261,7 @@ predictandCM(rpartFit2,test.data,"raw")
  system.time (gridxgFit1 <- train(diag~., data=train.data, 
                   method = "xgbTree", tuneGrid =tune.gridxgb,
                   trControl = train.control
-                  ,                 metric = "ROC"
+                  ,                 metric = "Accuracy"
                 ))
  
  
@@ -291,6 +292,7 @@ Create a socket cluster using available number of cores
 
 ```{r threaded}
 # 
+ reset.seed()
  numberofcores = detectCores()  # review what number of cores does for your environment
  cl <- makeCluster(numberofcores, type = "SOCK")
  
@@ -307,7 +309,7 @@ Create a socket cluster using available number of cores
  system.time (gridxgFit2 <- train(diag~., data=train.data, 
                   method = "xgbTree", tuneGrid =tune.gridxgb,
                   trControl = train.control
-                  ,                 metric = "ROC"
+                  ,                 metric = "Accuracy"
                 ))
  
  stopCluster(cl)
@@ -320,8 +322,8 @@ Create a socket cluster using available number of cores
 
 ```{r tunegridxgbthreaded}
 
-  predictandCM(gridxgFit1,train.data,"raw")
-  predictandCM(gridxgFit1,test.data,"raw")
+  predictandCM(gridxgFit2,train.data,"raw")
+  predictandCM(gridxgFit2,test.data,"raw")
 
 ```
 
