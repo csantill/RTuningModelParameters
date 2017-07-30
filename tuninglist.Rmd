@@ -1,30 +1,31 @@
 ---
 title: "Parameter tuning caret"
-author: "Carlos Santillan"
-about : https://www.linkedin.com/in/carlos-santillan/
+author: "Carlos Santillan" 
+     
+     
 date: "June 29, 2017"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache=TRUE)
 ```
 
 ## Caret model tuning
 
 
 
-
-
-
-```{r initialize,message = FALSE}
+```{r initialize,message=FALSE, cache=TRUE}
 # load the library
-#install.packages(c("dplyr","e1071", "caret", "doSNOW", "ipred", "xgboost","rattle","rpart.plot"))
+#install.packages(c("dplyr","e1071", "caret", "doSNOW", "ipred", "xgboost","rattle","rpart.plot","mlbench"))
+#detach("package:doSNOW", unload=TRUE)
+
+library(mlbench)
 library(plyr); library(dplyr)
 library(caret)
 library(rattle)					# Fancy tree plot
 library(rpart.plot)	
-library(doSNOW)
 library(dplyr)
 library(parallel)
 
@@ -50,7 +51,7 @@ reset.seed <- function()
 You can get a list of models supported by caret
 
 
-```{r pressure, echo=TRUE}
+```{r pressure, echo=TRUE, cache=TRUE}
 names(getModelInfo())
 ```
 
@@ -58,23 +59,23 @@ names(getModelInfo())
 
 The tunable parameters for a given model 
 
-CART Classofocation and Regression Tree 
+CART Classification and Regression Tree 
 
-```{r lookupCART, echo=TRUE}
+```{r lookupCART, echo=TRUE, cache=TRUE}
 modelLookup("rpart2")
 ```
 
-xgboost 
+xgboost eXtreme Gradient Boosting 
 
 https://github.com/dmlc/xgboost
 
-```{r lookupxgbTree, echo=TRUE}
+```{r lookupxgbTree, echo=TRUE, cache=TRUE}
 modelLookup("xgbTree")
 ```
 
 KNN  K-Nearest Neighbors
 
-```{r lookupknn, echo=TRUE}
+```{r lookupknn, echo=TRUE, cache=TRUE}
 modelLookup("knn")
 ```
 
@@ -85,23 +86,20 @@ Pima diabetes data from National Institute of Diabetes and Digestive and Kidney 
 
 https://archive.ics.uci.edu/ml/datasets/Pima+Indians+Diabetes
 
-* **noPreg** Number of times pregnant 
-* **plasma**  Plasma glucose concentration a 2 hours in an oral glucose tolerance test 
-* **diastolic** Diastolic blood pressure (mm Hg) 
+* **Pregnant** Number of times pregnant 
+* **Glucose**  Plasma glucose concentration a 2 hours in an oral glucose tolerance test 
+* **Pressure** Diastolic blood pressure (mm Hg) 
 * **triceps**  Triceps skin fold thickness (mm) 
 * **insulin** 2-Hour serum insulin (mu U/ml) 
-* **bmi**  Body mass index (weight in kg/(height in m)^2) 
+* **mass**  Body mass index (weight in kg/(height in m)^2) 
 * **pedigree** Diabetes pedigree function 
 * **age**  Age (years) 
-* **Diag** Diagnostic Healty or Diabetic
+* **diabetes** Diagnostic pos or neg
 
 
-```{r loaddata, echo=TRUE}
-pima.data <- read.csv('./data/pimadiabetes.csv', stringsAsFactors = FALSE)
-
-pima.data$diag <- as.factor(pima.data$diag)
-
-str(pima.data)
+```{r loaddata, echo=TRUE, cache=TRUE}
+pima.data <- data(PimaIndiansDiabetes) # mlbench
+str(PimaIndiansDiabetes)
 ```
 
 
@@ -109,20 +107,20 @@ str(pima.data)
 
 Split the dataset into 70% training, and 30% testing maintaining the proportional ratio
 
-Create partition can be used to create training and test dataset that preserve the ratio of the factor 
+Create partition can be used to create training and test dataset that preserve the ratio of the target factors 
 
-```{r setuptrainingandtest, echo=TRUE}
+```{r setuptrainingandtest, echo=TRUE, cache=TRUE}
 
 reset.seed()
-table(pima.data$diag)
+table(PimaIndiansDiabetes["diabetes"])
 
-indexes <- createDataPartition(pima.data$diag,
+indexes <- createDataPartition(PimaIndiansDiabetes$diabetes,
                                times = 1,
                                p = 0.7,
                                list = FALSE)
-train.data <- pima.data[indexes,] 
-test.data <- pima.data[-indexes,] 
-table(train.data$diag)
+train.data <- PimaIndiansDiabetes[indexes,] 
+test.data <- PimaIndiansDiabetes[-indexes,] 
+table(train.data["diabetes"])
 
 ```
 
@@ -133,17 +131,10 @@ table(train.data$diag)
 ### Base test
 
 
-```{r base, echo=TRUE}
-predictandCM<- function(amodel,data,modeltype)
-{
-  pred <-predict(amodel,data,type=modeltype)
-  
-  confusionMatrix(pred, reference=data$diag,positive = 'Diabetes')
-}
-
+```{r base, echo=TRUE, cache=TRUE}
 
 reset.seed()
-rtree_model <- rpart(diag~., data=train.data, control=rpart.control(maxdepth=10))
+rtree_model <- rpart(diabetes~., data=train.data, control=rpart.control(maxdepth=8))
 rtree_model
 fancyRpartPlot(rtree_model)	
 
@@ -151,74 +142,92 @@ fancyRpartPlot(rtree_model)
 
 ### Evaluate the base model 
 
+The Confusion Matrix is a table that can be used to evaluate the performance of a classifier.
 
-```{r baseevaltraininig, echo=TRUE}
+* Accuracy  How often is the Classifier right?  TP+TN / (P+N)
+* Sensitivity (Recall/TPR) TP / P
+* Specificity  (TNR)     TN / N
 
+```{r baseevaltraininig, echo=TRUE, cache=TRUE}
+predictandCM<- function(amodel,data,modeltype)
+{
+  pred <-predict(amodel,data,type=modeltype)
+  confusionMatrix(pred, reference=data$diabetes,positive = 'pos')
+}
 predictandCM(rtree_model,train.data,"class")
 
 ```
 
 
-```{r baseevaltesting, echo=TRUE}
-
+```{r baseevaltesting, echo=TRUE, cache=TRUE}
 predictandCM(rtree_model,test.data,"class")
-
 ```
 
 ### Lets see if we can do better with caret
 
 
-```{r basetrain, echo=TRUE}
-reset.seed()
-fitControl <- trainControl(## 10-fold CV
-                           method = "repeatedcv",
-                           number = 10,
-                           classProbs = TRUE,
-                           ## repeated ten times
-                           repeats = 10,
-                           summaryFunction = twoClassSummary)
+We will use the same train control parameters for all the models
 
-system.time (rpartFit1 <- train(diag~., data=train.data, 
+```{r traincontrol, echo=TRUE, cache=TRUE}
+train.control <- trainControl(
+                           method = "repeatedcv",
+                           number = 10, ## 10-fold CV
+                           ## repeated three times
+                           repeats = 3,
+                           # USE AUC
+                           summaryFunction = twoClassSummary, 
+                           classProbs = TRUE
+                           )
+```
+
+
+The tuneLength  parameter is used to determine the total number of combinations that will be evaluated
+
+
+
+```{r basetrain, echo=TRUE, cache=TRUE}
+reset.seed()
+system.time (rpartFit1 <- train(diabetes~., data=train.data, 
                  method = "rpart2", 
-                 trControl = fitControl,
+                 tuneLength = 6,
+                 trControl = train.control,
                  metric = "ROC"
                ))
 rpartFit1
-
-
+plot(rpartFit1)
+rpartFit1$finalModel
 fancyRpartPlot(rpartFit1$finalModel)	
 
 ```
 
-```{r baseevalcaret1training, echo=TRUE}
+```{r baseevalcaret1training, echo=TRUE, cache=TRUE}
 
 predictandCM(rpartFit1$finalModel,train.data,"class")
 
 ```
 
-```{r baseevalcarettesting, echo=TRUE}
+```{r baseevalcarettesting, echo=TRUE, cache=TRUE}
 
 predictandCM(rpartFit1,test.data,"raw")
 
 ```
+## Grid Search
+
+Set up caret to use a grid search for parameter tuning.
+
+Manually configure Grid search 
 
 
-Set up caret to perform 10-fold cross validation repeated 3 times and to use a grid search for parameter tuning
-
-```{r traincontrol, echo=TRUE}
+```{r traincontrolgrid, echo=TRUE, cache=TRUE}
 reset.seed()
-train.control <- trainControl(method = "repeatedcv",
-                              number = 10,
-                              repeats = 10,
-                              classProbs = TRUE,
-#                              summaryFunction = twoClassSummary,
-                              search = "grid")
-tune.gridcart <- expand.grid(maxdepth = 3:8)
 
-system.time (rpartFit2 <- train(diag~., data=train.data, 
-                 method = "rpart2", tuneGrid =tune.gridcart,
-                 trControl = train.control
-                 ,                 metric = "Accuracy"
+tune.gridcart <- expand.grid(maxdepth = 2:8)
+
+system.time (rpartFit2 <- train(diabetes~., data=train.data, 
+                 method = "rpart2", 
+                 tuneGrid =tune.gridcart,
+                 trControl = train.control,
+                 metric = "ROC"
                ))
 
 rpartFit2
@@ -226,61 +235,61 @@ rpartFit2
 ```
 
 
-```{r baseevalcarettraining2, echo=TRUE}
+```{r baseevalcarettraining2, echo=TRUE, cache=TRUE}
 
 predictandCM(rpartFit2$finalModel,train.data,"class")
 
 ```                         
 
 
-```{r baseevalcarettesting2, echo=TRUE}
+```{r baseevalcarettesting2, echo=TRUE, cache=TRUE}
 
 predictandCM(rpartFit2,test.data,"raw")
 
 ```                         
 
-```{r tunegridxgb, echo=TRUE}
+## Tune a more complex model
+
+xgbtree has a lot parameters that can be looked at
+
+```{r tunegridxgb, echo=TRUE, cache=TRUE}
 
 reset.seed()
- train.control <- trainControl(method = "repeatedcv",
-                               number = 10,
-                               repeats = 1,
-                               classProbs = TRUE,
-                               search = "grid")
- 
- tune.gridxgb <- expand.grid(eta = c(0.05, 0.075, 0.1),
-                          nrounds = c(50, 75, 100),
-                          max_depth = 4:8,
-                          min_child_weight = c(2.0, 2.25, 2.5),
-                          colsample_bytree = c(0.3, 0.4, 0.5),
-                          gamma = 0,
-                          subsample = 1)
- 
- dim(tune.gridxgb)
- 
- system.time (gridxgFit1 <- train(diag~., data=train.data, 
-                  method = "xgbTree", tuneGrid =tune.gridxgb,
-                  trControl = train.control
-                  ,                 metric = "Accuracy"
-                ))
- 
- 
- 
- #gridxgFit1
+
+tune.gridxgb <- expand.grid(eta = c(0.05,0.3, 0.075),
+					  nrounds = c(50, 75, 100),
+					  max_depth = 4:7,
+					  min_child_weight = c(2.0, 2.25),
+					  colsample_bytree = c(0.3, 0.4, 0.5),
+					  gamma = 0,
+					  subsample = 1)
+
+dim(tune.gridxgb)
+
+system.time (gridxgFit1 <- train(diabetes~., 
+			  data=train.data, 
+			  method = "xgbTree", 
+			  tuneGrid =tune.gridxgb,
+			  trControl = train.control, 
+			  metric = "ROC"
+			))
+
+
+
+#gridxgFit1
 
                          
 ```
 
 
 ```{r tunegridxgbsingle}
-
-  predictandCM(gridxgFit1,train.data,"raw")
-  predictandCM(gridxgFit1,test.data,"raw")
-
+predictandCM(gridxgFit1,train.data,"raw")
+predictandCM(gridxgFit1,test.data,"raw")
 ```
 
 ![CPU usage while running grid](./2017-07-13_11-17-21.png)
 
+# Parallel 
 
 Use the doSNOW package to enable caret to train in parallel.
 doSNOW will work on Linux, Windows and Mac OS
@@ -290,29 +299,25 @@ Create a socket cluster using available number of cores
 
   
 
-```{r threaded}
+```{r threaded, cache=TRUE}
 # 
- reset.seed()
- numberofcores = detectCores()  # review what number of cores does for your environment
- cl <- makeCluster(numberofcores, type = "SOCK")
- 
- train.control <- trainControl(method = "repeatedcv",
-                               number = 10,
-                               repeats = 10,
-                               classProbs = TRUE,
-                               summaryFunction = twoClassSummary,
-                               search = "grid")
- 
- # Register cluster so that caret will know to train in parallel.
- registerDoSNOW(cl)
- 
- system.time (gridxgFit2 <- train(diag~., data=train.data, 
-                  method = "xgbTree", tuneGrid =tune.gridxgb,
-                  trControl = train.control
-                  ,                 metric = "Accuracy"
+library(doSNOW)
+reset.seed()
+numberofcores = detectCores()  # review what number of cores does for your environment
+
+cl <- makeCluster(numberofcores, type = "SOCK")
+# Register cluster so that caret will know to train in parallel.
+registerDoSNOW(cl)
+
+system.time (gridxgFit2 <- train(diabetes~.,
+                  data=train.data, 
+                  method = "xgbTree",
+                  tuneGrid =tune.gridxgb,
+                  trControl = train.control,
+                  metric = "ROC"
                 ))
  
- stopCluster(cl)
+stopCluster(cl)
 
  #gridxgFit2
 
@@ -322,10 +327,35 @@ Create a socket cluster using available number of cores
 
 ```{r tunegridxgbthreaded}
 
-  predictandCM(gridxgFit2,train.data,"raw")
-  predictandCM(gridxgFit2,test.data,"raw")
+predictandCM(gridxgFit2,train.data,"raw")
+predictandCM(gridxgFit2,test.data,"raw")
 
 ```
+
+
+
+
+## Model Comparisons
+
+Caret can also simplify model comparision
+
+
+```{r tunegridxgbthreaded2, cache=TRUE}
+
+model_list <- list(randomgrid=rpartFit2,gridXGB=rpartFit1)
+resamples <- resamples(model_list )
+summary(resamples)
+
+
+dotplot(resamples,metric="ROC")
+```
+
+
+
+
+
+
+![CPU usage while running grid in cluster](./2017-07-13_13-46-51.png)
 
 
 ## References
@@ -335,7 +365,9 @@ Create a socket cluster using available number of cores
   * https://www.r-bloggers.com/a-quick-introduction-to-machine-learning-in-r-with-caret/
   
 
-![CPU usage while running grid in cluster](./2017-07-13_13-46-51.png)
+  * Python example using GridSearch and cross validation 
+    https://github.com/csantill/AustinSIGKDD-DecisionTrees/blob/master/notebooks/Decision%20Trees-diabetes.ipynb
+
 
 
 ```{r session}
