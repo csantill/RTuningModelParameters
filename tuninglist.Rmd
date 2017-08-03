@@ -16,10 +16,10 @@ knitr::opts_chunk$set(cache=TRUE)
 
 
 
-```{r initialize,message=FALSE, cache=TRUE}
+```{r initialize,message=FALSE, cache=FALSE}
 # load the library
 #install.packages(c("dplyr","e1071", "caret", "doSNOW", "ipred", "xgboost","rattle","rpart.plot","mlbench"))
-#detach("package:doSNOW", unload=TRUE)
+
 
 library(mlbench)
 library(plyr); library(dplyr)
@@ -28,7 +28,7 @@ library(rattle)					# Fancy tree plot
 library(rpart.plot)	
 library(dplyr)
 library(parallel)
-
+library(rpart)
 reset.seed <- function()
 {
   # ensure results are repeatable
@@ -38,15 +38,20 @@ reset.seed <- function()
 ```
 
 
-## Caret (Classification And Regression Training)
+## caret (Classification And Regression Training)
+
+The caret package contains set of functions to streamline model training for Regression and Classification.
 
   * Standard Interface for Modeling and Prediction
   * Simplify Model tuning
-  * Data wrangling
+  * Data splitting
+  * Feature selection
+  * Evaluate models
   * Paralell processing
 
 
 ### Models Supported
+caret supports hundreds of predictive models, and provides facilities for adding your own models to take advantage of the caret infrastructure. 
 
 You can get a list of models supported by caret
 
@@ -131,7 +136,7 @@ table(train.data["diabetes"])
 ### Base test
 
 
-```{r base, echo=TRUE, cache=TRUE}
+```{r base, echo=TRUE, cache=FALSE}
 
 reset.seed()
 rtree_model <- rpart(diabetes~., data=train.data, control=rpart.control(maxdepth=8))
@@ -147,6 +152,11 @@ The Confusion Matrix is a table that can be used to evaluate the performance of 
 * Accuracy  How often is the Classifier right?  TP+TN / (P+N)
 * Sensitivity (Recall/TPR) TP / P
 * Specificity  (TNR)     TN / N
+
+![Confusion Matrix](./confusionmatrix.png)
+
+![Area Under the Curve](./aucroc.png)
+
 
 ```{r baseevaltraininig, echo=TRUE, cache=TRUE}
 predictandCM<- function(amodel,data,modeltype)
@@ -167,13 +177,14 @@ predictandCM(rtree_model,test.data,"class")
 
 
 We will use the same train control parameters for all the models
+Use K-Fold Cross validation when parameter tuning to control over fitting
+
 
 ```{r traincontrol, echo=TRUE, cache=TRUE}
 train.control <- trainControl(
                            method = "repeatedcv",
                            number = 10, ## 10-fold CV
-                           ## repeated three times
-                           repeats = 3,
+                           repeats = 3,## repeated three times
                            # USE AUC
                            summaryFunction = twoClassSummary, 
                            classProbs = TRUE
@@ -185,7 +196,7 @@ The tuneLength  parameter is used to determine the total number of combinations 
 
 
 
-```{r basetrain, echo=TRUE, cache=TRUE}
+```{r basetrain, echo=TRUE, cache=FALSE}
 reset.seed()
 system.time (rpartFit1 <- train(diabetes~., data=train.data, 
                  method = "rpart2", 
@@ -201,15 +212,11 @@ fancyRpartPlot(rpartFit1$finalModel)
 ```
 
 ```{r baseevalcaret1training, echo=TRUE, cache=TRUE}
-
 predictandCM(rpartFit1$finalModel,train.data,"class")
-
 ```
 
 ```{r baseevalcarettesting, echo=TRUE, cache=TRUE}
-
 predictandCM(rpartFit1,test.data,"raw")
-
 ```
 ## Grid Search
 
@@ -233,12 +240,10 @@ system.time (rpartFit2 <- train(diabetes~., data=train.data,
 rpartFit2
 
 ```
-
+### 
 
 ```{r baseevalcarettraining2, echo=TRUE, cache=TRUE}
-
 predictandCM(rpartFit2$finalModel,train.data,"class")
-
 ```                         
 
 
@@ -256,14 +261,14 @@ xgbtree has a lot parameters that can be looked at
 
 reset.seed()
 
-tune.gridxgb <- expand.grid(eta = c(0.05,0.3, 0.075),
-					  nrounds = c(50, 75, 100),
-					  max_depth = 4:7,
-					  min_child_weight = c(2.0, 2.25),
-					  colsample_bytree = c(0.3, 0.4, 0.5),
-					  gamma = 0,
-					  subsample = 1)
-
+tune.gridxgb <- expand.grid(eta = c(0.05,0.3, 0.075), # 3 
+					  nrounds = c(50, 75, 100),  # 3
+					  max_depth = 4:7,  # 4
+					  min_child_weight = c(2.0, 2.25), #2 
+					  colsample_bytree = c(0.3, 0.4, 0.5), # 3
+					  gamma = 0, #1
+					  subsample = 1)  # 1
+# 3*3*4*2*3*1*1 = 216
 dim(tune.gridxgb)
 
 system.time (gridxgFit1 <- train(diabetes~., 
@@ -276,7 +281,7 @@ system.time (gridxgFit1 <- train(diabetes~.,
 
 
 
-#gridxgFit1
+head(gridxgFit1)
 
                          
 ```
@@ -288,6 +293,8 @@ predictandCM(gridxgFit1,test.data,"raw")
 ```
 
 ![CPU usage while running grid](./2017-07-13_11-17-21.png)
+
+![With Apoologies to XKCD ](./tuningmodel.png)
 
 # Parallel 
 
@@ -319,6 +326,10 @@ system.time (gridxgFit2 <- train(diabetes~.,
  
 stopCluster(cl)
 
+
+
+#detach("package:doSNOW", unload=TRUE)
+
  #gridxgFit2
 
  
@@ -335,20 +346,6 @@ predictandCM(gridxgFit2,test.data,"raw")
 
 
 
-## Model Comparisons
-
-Caret can also simplify model comparision
-
-
-```{r tunegridxgbthreaded2, cache=TRUE}
-
-model_list <- list(randomgrid=rpartFit2,gridXGB=rpartFit1)
-resamples <- resamples(model_list )
-summary(resamples)
-
-
-dotplot(resamples,metric="ROC")
-```
 
 
 
@@ -364,11 +361,23 @@ dotplot(resamples,metric="ROC")
   * https://cran.r-project.org/web/packages/caret/index.html
   * https://www.r-bloggers.com/a-quick-introduction-to-machine-learning-in-r-with-caret/
   
+  * http://www.dataschool.io/simple-guide-to-confusion-matrix-terminology/
+  * https://en.wikipedia.org/wiki/Cross-validation_(statistics)
+  
+  
 
   * Python example using GridSearch and cross validation 
     https://github.com/csantill/AustinSIGKDD-DecisionTrees/blob/master/notebooks/Decision%20Trees-diabetes.ipynb
 
+```{r cleanup}
 
+# unregister for each do parallel foreach 
+unregister <- function() {
+  env <- foreach:::.foreachGlobals
+  rm(list=ls(name=env), pos=env)
+}
+#unregister()
+```
 
 ```{r session}
 
