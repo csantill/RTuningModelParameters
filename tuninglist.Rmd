@@ -98,7 +98,7 @@ https://archive.ics.uci.edu/ml/datasets/Pima+Indians+Diabetes
 
 
 ```{r loaddata, echo=TRUE, cache=TRUE}
-pima.data <- data(PimaIndiansDiabetes) # mlbench
+data(PimaIndiansDiabetes) # mlbench
 str(PimaIndiansDiabetes)
 ```
 
