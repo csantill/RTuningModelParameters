@@ -228,7 +228,7 @@ Manually configure Grid search
 ```{r traincontrolgrid, echo=TRUE, cache=TRUE}
 reset.seed()
 
-tune.gridcart <- expand.grid(maxdepth = 2:8)
+tune.gridcart <- expand.grid(maxdepth = 2:10)
 
 system.time (rpartFit2 <- train(diabetes~., data=train.data, 
                  method = "rpart2", 
@@ -238,6 +238,8 @@ system.time (rpartFit2 <- train(diabetes~., data=train.data,
                ))
 
 rpartFit2
+
+plot(rpartFit2)
 
 ```
 ### 
@@ -281,7 +283,7 @@ system.time (gridxgFit1 <- train(diabetes~.,
 
 
 
-head(gridxgFit1)
+
 
                          
 ```
@@ -370,13 +372,12 @@ predictandCM(gridxgFit2,test.data,"raw")
     https://github.com/csantill/AustinSIGKDD-DecisionTrees/blob/master/notebooks/Decision%20Trees-diabetes.ipynb
 
 ```{r cleanup}
-
 # unregister for each do parallel foreach 
 unregister <- function() {
   env <- foreach:::.foreachGlobals
   rm(list=ls(name=env), pos=env)
 }
-#unregister()
+unregister()
 ```
 
 ```{r session}
