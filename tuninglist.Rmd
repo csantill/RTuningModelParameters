@@ -3,7 +3,7 @@ title: "Parameter tuning caret"
 author: "Carlos Santillan" 
      
      
-date: "June 29, 2017"
+date: "August 8, 2017"
 output: html_document
 ---
 
@@ -12,15 +12,20 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(cache=TRUE)
 ```
 
+
+
+
 ## Caret model tuning
+
+### Carlos Santillan
+
+https://csantill.github.io/RTuningModelParameters/
 
 
 
 ```{r initialize,message=FALSE, cache=FALSE}
 # load the library
 #install.packages(c("dplyr","e1071", "caret", "doSNOW", "ipred", "xgboost","rattle","rpart.plot","mlbench"))
-
-
 library(mlbench)
 library(plyr); library(dplyr)
 library(caret)
@@ -281,7 +286,7 @@ system.time (gridxgFit1 <- train(diabetes~.,
 			  metric = "ROC"
 			))
 
-
+plot(gridxgFit1)
 
 
 
@@ -327,7 +332,6 @@ system.time (gridxgFit2 <- train(diabetes~.,
                 ))
  
 stopCluster(cl)
-
 
 
 #detach("package:doSNOW", unload=TRUE)
