@@ -194,6 +194,14 @@ predictandCM(rtree_model,test.data,"class")
 We will use the same train control parameters for all the models
 Use K-Fold Cross validation when parameter tuning to control over fitting
 
+![Overfitting](./overfitting.png)
+
+
+![K Folds](./kfolds.png)
+
+
+
+
 
 ```{r traincontrol, echo=TRUE, cache=TRUE}
 train.control <- trainControl(
@@ -381,6 +389,7 @@ predictandCM(gridxgFit2,test.data,"raw")
   
   * http://www.dataschool.io/simple-guide-to-confusion-matrix-terminology/
   * https://en.wikipedia.org/wiki/Cross-validation_(statistics)
+  * https://www.analyticsvidhya.com/blog/2016/02/7-important-model-evaluation-error-metrics/
   
   
 
