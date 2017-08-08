@@ -19,6 +19,12 @@ knitr::opts_chunk$set(cache=TRUE)
 
 ### Carlos Santillan
 
+Senior Software Engineer
+
+Bentley Systems Inc
+
+https://www.linkedin.com/in/carlos-santillan/
+
 https://csantill.github.io/RTuningModelParameters/
 
 
@@ -58,7 +64,10 @@ The caret package contains set of functions to streamline model training for Reg
 ### Models Supported
 caret supports hundreds of predictive models, and provides facilities for adding your own models to take advantage of the caret infrastructure. 
 
-You can get a list of models supported by caret
+You can get a list of models supported by caret 
+
+
+https://topepo.github.io/caret/available-models.html
 
 
 ```{r pressure, echo=TRUE, cache=TRUE}
@@ -144,8 +153,9 @@ table(train.data["diabetes"])
 ```{r base, echo=TRUE, cache=FALSE}
 
 reset.seed()
-rtree_model <- rpart(diabetes~., data=train.data, control=rpart.control(maxdepth=8))
+rtree_model <- rpart(diabetes~., data=train.data, control=rpart.control(maxdepth=6))
 rtree_model
+
 fancyRpartPlot(rtree_model)	
 
 ```
@@ -267,6 +277,8 @@ xgbtree has a lot parameters that can be looked at
 ```{r tunegridxgb, echo=TRUE, cache=TRUE}
 
 reset.seed()
+
+modelLookup("xgbTree")
 
 tune.gridxgb <- expand.grid(eta = c(0.05,0.3, 0.075), # 3 
 					  nrounds = c(50, 75, 100),  # 3
